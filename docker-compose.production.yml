@@ -1,0 +1,54 @@
+# Файл docker-compose.yml
+
+# Версия docker-compose
+version: '3'
+
+# Перечень volume
+volumes:
+  pg_data:
+  # Новый volume — для статических файлов
+  static:
+
+# Перечень контейнеров
+services:
+  # Имя и описание первого контейнера; имя выбирает разработчик. 
+  # Это контейнер БД
+  db:
+    # Из какого образа запустить контейнер:
+    image: postgres:13.10
+    # Файл (или список файлов) с переменными окружения
+    env_file: .env
+    # Какой volume подключить для этого контейнера
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+  # Имя и описание контейнера с бэкендом
+  backend:
+    image: shft1/taski_backend  # Качаем с Docker Hub
+    env_file: .env
+    # Тут подключаем volume к backend
+    volumes:
+      - static:/backend_static
+    # Какие контейнеры нужно запустить до старта этого контейнера:
+    depends_on:
+      - db
+  # Имя третьего контейнера. Это контейнер с фронтендом
+  frontend:
+    env_file: .env
+    image: shft1/taski_frontend  # Качаем с Docker Hub
+    volumes: 
+      - static:/frontend_static
+    command: cp -r /app/build/. /frontend_static/
+  # Добавляем новый контейнер: gateway.
+  gateway:
+    # Сбилдить и запустить образ, 
+    # описанный в Dockerfile в папке gateway
+    image: shft1/taski_gateway  # Качаем с Docker Hub
+    # А тут подключаем volume со статикой к gateway
+    volumes:
+      - static:/staticfiles/
+    # Ключ ports устанавливает
+    # перенаправление всех запросов с порта 8000 хоста
+    # на порт 80 контейнера.
+    ports:
+      - 8000:80 
+    env_file: .env
